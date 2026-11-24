@@ -4,6 +4,16 @@ import Gallery from "@/components/gallery";
 import Icon, { type IconName } from "@/components/landing/icon";
 import ParallaxPhoto from "@/components/landing/parallax-photo";
 import { FadeIn, Reveal, Stagger, StaggerItem } from "@/components/motion";
+import type { Metadata } from "next";
+import { headers } from "next/headers";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const host = (await headers()).get("host") ?? "localhost";
+  return {
+    title: "Acumen Schools Portal",
+    alternates: { canonical: `https://${host}/` },
+  };
+}
 
 const nav = [
   { href: "#platform", label: "Platform" },
@@ -330,14 +340,14 @@ export default function Home() {
       </section>
 
       {/* ---------- CTA ---------- */}
-      <section id="contact" className="relative overflow-hidden bg-gradient-to-br from-brand-900 via-brand-800 to-slate-900 py-20 text-center sm:py-24">
+      <section id="contact" className="relative overflow-hidden bg-gradient-to-br from-slate-100 via-white to-slate-200 py-20 text-center sm:py-24">
         <div aria-hidden="true" className="absolute -left-24 top-0 h-72 w-72 rounded-full bg-brand-500/20 blur-3xl" />
         <div aria-hidden="true" className="absolute -right-24 bottom-0 h-72 w-72 rounded-full bg-emerald-400/10 blur-3xl" />
         <Stagger className="relative mx-auto max-w-3xl px-4 sm:px-6" stagger={0.12}>
-          <StaggerItem><p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-300">Get started</p></StaggerItem>
-          <StaggerItem><h2 className="mt-3 text-3xl font-bold tracking-tight text-white sm:text-4xl">Ready to run a calmer school?</h2></StaggerItem>
+          <StaggerItem><p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-700">Get started</p></StaggerItem>
+          <StaggerItem><h2 className="mt-3 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">Ready to run a calmer school?</h2></StaggerItem>
           <StaggerItem>
-            <p className="mt-4 text-sm text-brand-100 sm:text-base">
+            <p className="mt-4 text-sm text-slate-600 sm:text-base">
               Sign in to explore the portals, or contact your school administrator for an account.
             </p>
           </StaggerItem>
@@ -346,7 +356,7 @@ export default function Home() {
               <Link href="/login" className="btn gap-2 bg-white px-6 py-3 !text-brand-900 hover:bg-brand-50">
                 Go to sign in <Icon name="arrow" className="h-4 w-4" />
               </Link>
-              <a href="#platform" className="inline-flex items-center gap-2 rounded-lg border border-white/20 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/10">
+              <a href="#platform" className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-6 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
                 See what&apos;s inside
               </a>
             </div>
@@ -355,35 +365,35 @@ export default function Home() {
       </section>
 
       {/* ---------- Footer ---------- */}
-      <footer className="border-t border-slate-200 bg-white">
+      <footer className="border-t border-slate-800 bg-slate-900">
         <Stagger className="mx-auto grid max-w-7xl gap-10 px-4 py-12 sm:px-6 md:grid-cols-4 lg:px-8" stagger={0.1}>
           <StaggerItem>
-            <Logo size={48} />
+            <Logo size={64} />
           </StaggerItem>
           <StaggerItem>
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-900">Platform</p>
-            <ul className="mt-4 space-y-2 text-sm text-slate-500">
-              <li><a href="#platform" className="hover:text-brand-700">Overview</a></li>
-              <li><a href="#platform" className="hover:text-brand-700">Features</a></li>
-              <li><a href="#gallery" className="hover:text-brand-700">Gallery</a></li>
-              <li><a href="#roles" className="hover:text-brand-700">For everyone</a></li>
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Platform</p>
+            <ul className="mt-4 space-y-2 text-sm text-slate-400">
+              <li><a href="#platform" className="hover:text-brand-500">Overview</a></li>
+              <li><a href="#platform" className="hover:text-brand-500">Features</a></li>
+              <li><a href="#gallery" className="hover:text-brand-500">Gallery</a></li>
+              <li><a href="#roles" className="hover:text-brand-500">For everyone</a></li>
             </ul>
           </StaggerItem>
           <StaggerItem>
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-900">Portals</p>
-            <ul className="mt-4 space-y-2 text-sm text-slate-500">
-              {roles.map((r) => <li key={r.title}><a href="#roles" className="hover:text-brand-700">{r.title}</a></li>)}
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Portals</p>
+            <ul className="mt-4 space-y-2 text-sm text-slate-400">
+              {roles.map((r) => <li key={r.title}><a href="#roles" className="hover:text-brand-500">{r.title}</a></li>)}
             </ul>
           </StaggerItem>
           <StaggerItem>
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-900">Get in touch</p>
-            <p className="mt-4 text-sm leading-relaxed text-slate-500">
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Get in touch</p>
+            <p className="mt-4 text-sm leading-relaxed text-slate-400">
               Raising future Acumen leaders.<br />Talk to your school administrator to get started.
             </p>
-            <Link href="/login" className="mt-4 inline-flex text-sm font-semibold text-brand-700 hover:underline">Sign in →</Link>
+            <Link href="/login" className="mt-4 inline-flex text-sm font-semibold text-brand-500 hover:underline">Sign in →</Link>
           </StaggerItem>
         </Stagger>
-        <div className="border-t border-slate-100 py-5 text-center text-xs text-slate-400">
+        <div className="border-t border-slate-800 py-5 text-center text-xs text-slate-400">
           © {new Date().getFullYear()} Acumen Schools Portal. All rights reserved.
         </div>
       </footer>
