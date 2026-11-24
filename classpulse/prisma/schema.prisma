@@ -1,0 +1,273 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  TEACHER
+  STUDENT
+  PARENT
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+}
+
+enum IntentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+enum PaymentMethod {
+  CASH
+  PAYSTACK
+}
+
+enum SubmissionStatus {
+  PENDING
+  CONFIRMED
+  REJECTED
+}
+
+enum SubmissionMethod {
+  BANK_TRANSFER
+  CASH
+  OTHER
+}
+
+model User {
+  id                 String   @id @default(cuid())
+  email              String   @unique
+  passwordHash       String
+  name               String
+  role               Role
+  mustChangePassword Boolean  @default(false)
+  createdAt          DateTime @default(now())
+
+  student       Student?
+  teacher       Teacher?
+  parent        Parent?
+  announcements Announcement[]
+  resetTokens   PasswordResetToken[]
+  submittedPayments PaymentSubmission[] @relation("SubmittedPayments")
+  reviewedPayments  PaymentSubmission[] @relation("ReviewedPayments")
+}
+
+model Teacher {
+  id       String            @id @default(cuid())
+  userId   String            @unique
+  staffNo  String            @unique
+  user     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  classes  TeacherClass[]
+  subjects TeacherSubject[]
+}
+
+// A teacher may only mark attendance for classes they are assigned to.
+model TeacherClass {
+  id        String @id @default(cuid())
+  teacherId String
+  classId   String
+  teacher   Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  class     Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  @@unique([teacherId, classId])
+  @@index([classId])
+}
+
+// A teacher may only enter scores for the (class, subject) pairs they are assigned to.
+model TeacherSubject {
+  id        String @id @default(cuid())
+  teacherId String
+  classId   String
+  subjectId String
+  teacher   Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  class     Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@unique([teacherId, classId, subjectId])
+  @@index([classId, subjectId])
+}
+
+model Parent {
+  id       String    @id @default(cuid())
+  userId   String    @unique
+  phone    String?
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  children Student[]
+}
+
+model Class {
+  id              String            @id @default(cuid())
+  name            String // e.g. "JSS 1"
+  arm             String // e.g. "A"
+  students        Student[]
+  fees            FeeItem[]
+  teacherClasses  TeacherClass[]
+  teacherSubjects TeacherSubject[]
+
+  @@unique([name, arm])
+}
+
+model Subject {
+  id              String            @id @default(cuid())
+  name            String            @unique
+  code            String            @unique
+  scores          Score[]
+  teacherSubjects TeacherSubject[]
+}
+
+model Term {
+  id      String    @id @default(cuid())
+  name    String // "First Term"
+  session String // "2026/2027"
+  current Boolean   @default(false)
+  scores  Score[]
+  fees    FeeItem[]
+
+  @@unique([name, session])
+}
+
+model Student {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  admissionNo String   @unique
+  gender      String
+  dob         DateTime?
+  classId     String
+  parentId    String?
+
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  class      Class        @relation(fields: [classId], references: [id])
+  parent     Parent?      @relation(fields: [parentId], references: [id])
+  attendance  Attendance[]
+  scores      Score[]
+  payments    Payment[]
+  intents     PaymentIntent[]
+  submissions PaymentSubmission[]
+}
+
+model Attendance {
+  id        String           @id @default(cuid())
+  studentId String
+  date      DateTime         @db.Date
+  status    AttendanceStatus
+  student   Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, date])
+}
+
+// CA1 (max 20) + CA2 (max 20) + Exam (max 60) = 100
+model Score {
+  id        String  @id @default(cuid())
+  studentId String
+  subjectId String
+  termId    String
+  ca1       Int     @default(0)
+  ca2       Int     @default(0)
+  exam      Int     @default(0)
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  subject   Subject @relation(fields: [subjectId], references: [id])
+  term      Term    @relation(fields: [termId], references: [id])
+
+  @@unique([studentId, subjectId, termId])
+}
+
+model FeeItem {
+  id       String    @id @default(cuid())
+  title    String
+  amount   Int // naira
+  termId   String
+  classId  String? // null = applies to every class
+  term     Term      @relation(fields: [termId], references: [id])
+  class    Class?    @relation(fields: [classId], references: [id])
+  payments    Payment[]
+  intents     PaymentIntent[]
+  submissions PaymentSubmission[]
+}
+
+// Money actually received. Created by an admin (cash) or after Paystack confirms a charge.
+model Payment {
+  id        String        @id @default(cuid())
+  studentId String
+  feeItemId String
+  amount    Int // naira
+  reference String        @unique
+  method    PaymentMethod @default(CASH)
+  paidAt    DateTime      @default(now())
+  student   Student       @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  feeItem   FeeItem       @relation(fields: [feeItemId], references: [id])
+  submission PaymentSubmission?
+}
+
+// An offline payment claimed by a parent/student, awaiting admin confirmation.
+model PaymentSubmission {
+  id            String           @id @default(cuid())
+  studentId     String
+  feeItemId     String
+  amount        Int // naira
+  method        SubmissionMethod
+  reference     String? // bank / teller reference supplied by the payer
+  note          String?
+  status        SubmissionStatus @default(PENDING)
+  submittedById String
+  reviewedById  String?
+  reviewedAt    DateTime?
+  rejectionNote String?
+  paymentId     String?          @unique
+  createdAt     DateTime         @default(now())
+  student       Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  feeItem       FeeItem          @relation(fields: [feeItemId], references: [id], onDelete: Restrict)
+  submittedBy   User             @relation("SubmittedPayments", fields: [submittedById], references: [id], onDelete: Cascade)
+  reviewedBy    User?            @relation("ReviewedPayments", fields: [reviewedById], references: [id], onDelete: SetNull)
+  payment       Payment?         @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+}
+
+// A checkout we started with Paystack. Becomes a Payment only after server-side verification.
+model PaymentIntent {
+  id        String       @id @default(cuid())
+  reference String       @unique
+  studentId String
+  feeItemId String
+  amount    Int // naira
+  status    IntentStatus @default(PENDING)
+  payerId   String // user who started the checkout
+  createdAt DateTime     @default(now())
+  settledAt DateTime?
+  student   Student      @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  feeItem   FeeItem      @relation(fields: [feeItemId], references: [id])
+
+  @@index([studentId, feeItemId])
+}
+
+// Single-use, hashed tokens for self-service password reset. Never store the raw token.
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  usedAt    DateTime?
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Announcement {
+  id        String   @id @default(cuid())
+  title     String
+  body      String
+  audience  Role? // null = everyone
+  authorId  String
+  createdAt DateTime @default(now())
+  author    User     @relation(fields: [authorId], references: [id])
+}
