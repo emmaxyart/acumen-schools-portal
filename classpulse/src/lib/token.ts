@@ -7,10 +7,16 @@ export type Session = { uid: string; role: RoleName; name: string };
 export const COOKIE = "cp_session";
 export const SESSION_SECONDS = 7 * 24 * 3600;
 
+let warnedAboutDevelopmentSecret = false;
+
 const secret = () => {
   const s = process.env.AUTH_SECRET;
   if (!s && process.env.NODE_ENV === "production") {
     throw new Error("AUTH_SECRET must be set in production");
+  }
+  if (!s && process.env.NODE_ENV === "development" && !warnedAboutDevelopmentSecret) {
+    console.warn("AUTH_SECRET is unset; using the development-only fallback. Configure AUTH_SECRET for local environments.");
+    warnedAboutDevelopmentSecret = true;
   }
   if (process.env.NODE_ENV === "production" && new TextEncoder().encode(s ?? "").length < 32) {
     throw new Error("AUTH_SECRET must be at least 32 bytes in production");

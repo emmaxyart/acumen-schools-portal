@@ -28,18 +28,23 @@ export default function TeacherAssignments({ teachers, classes, subjects, classL
   async function send(method: "POST" | "DELETE", body: object) {
     setBusy(true);
     setMsg("");
-    const res = await fetch("/api/setup/assignments", {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    const data = (await res.json().catch(() => ({}))) as { error?: string };
-    setBusy(false);
-    setMsg(res.ok ? (method === "POST" ? "Assignment added." : "Assignment removed.") : data.error ?? "Could not save");
-    if (res.ok) {
-      setClassId("");
-      setSubjectId("");
-      router.refresh();
+    try {
+      const res = await fetch("/api/setup/assignments", {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      setMsg(res.ok ? (method === "POST" ? "Assignment added." : "Assignment removed.") : data.error ?? "Could not save");
+      if (res.ok) {
+        setClassId("");
+        setSubjectId("");
+        router.refresh();
+      }
+    } catch {
+      setMsg("Could not save the assignment. Check your connection and try again.");
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -96,14 +101,22 @@ export default function TeacherAssignments({ teachers, classes, subjects, classL
                         {labelFor(subjects, x.subjectId)}
                         <button
                           type="button" disabled={busy} className="ml-1 text-red-600 hover:underline"
-                          onClick={() => void send("DELETE", { teacherId: t.id, classId: l.classId, subjectId: x.subjectId })}
+                          onClick={() => {
+                            const subject = labelFor(subjects, x.subjectId);
+                            if (window.confirm(`Remove ${subject} from ${t.name}'s assignments for ${labelFor(classes, l.classId)}?`))
+                              void send("DELETE", { teacherId: t.id, classId: l.classId, subjectId: x.subjectId });
+                          }}
                           aria-label={`Remove ${labelFor(subjects, x.subjectId)}`}
                         >×</button>
                       </span>
                     ))}
                     <button
                       type="button" disabled={busy} className="text-red-600 hover:underline"
-                      onClick={() => void send("DELETE", { teacherId: t.id, classId: l.classId })}
+                      onClick={() => {
+                        const className = labelFor(classes, l.classId);
+                        if (window.confirm(`Remove ${t.name}'s assignment to ${className}? This also removes ${subs.length} subject assignment${subs.length === 1 ? "" : "s"} and attendance access for this class.`))
+                          void send("DELETE", { teacherId: t.id, classId: l.classId });
+                      }}
                     >Remove class</button>
                   </div>
                 );

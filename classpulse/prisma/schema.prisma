@@ -20,6 +20,11 @@ enum AttendanceStatus {
   LATE
 }
 
+enum Gender {
+  M
+  F
+}
+
 enum IntentStatus {
   PENDING
   SUCCESS
@@ -139,14 +144,14 @@ model Student {
   id          String   @id @default(cuid())
   userId      String   @unique
   admissionNo String   @unique
-  gender      String
+  gender      Gender
   dob         DateTime?
   classId     String
   parentId    String?
 
   user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   class      Class        @relation(fields: [classId], references: [id])
-  parent     Parent?      @relation(fields: [parentId], references: [id])
+  parent     Parent?      @relation(fields: [parentId], references: [id], onDelete: SetNull)
   attendance  Attendance[]
   scores      Score[]
   payments    Payment[]

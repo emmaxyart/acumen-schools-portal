@@ -76,6 +76,7 @@ export async function PATCH(req: Request, { params }: Ctx) {
         if (!st) return bad("Student not found", 404);
         if (d.classId && !(await db.class.findUnique({ where: { id: String(d.classId) }, select: { id: true } })))
           return bad("Class not found");
+        const gender = d.gender === "M" || d.gender === "F" ? d.gender : undefined;
 
         let parentId: string | null | undefined;
         if (d.guardianEmail !== undefined) {
@@ -97,7 +98,7 @@ export async function PATCH(req: Request, { params }: Ctx) {
           await tx.student.update({
             where: { id },
             data: {
-              ...(d.gender !== undefined && { gender: String(d.gender) }),
+              ...(gender !== undefined && { gender }),
               ...(d.classId !== undefined && { classId: String(d.classId) }),
               ...(parentId !== undefined && { parentId }),
             },

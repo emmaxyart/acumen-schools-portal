@@ -91,7 +91,16 @@ export async function POST(req: Request) {
     return Response.json({ authorizationUrl: tx.authorization_url, reference });
   } catch (e) {
     console.error("[paystack] initialize failed", e);
-    await db.paymentIntent.update({ where: { id: reservation.intent.id }, data: { status: "FAILED" } });
+    try {
+      const cleanup = await db.paymentIntent.updateMany({
+        where: { id: reservation.intent.id, status: "PENDING" },
+        data: { status: "FAILED" },
+      });
+      if (cleanup.count === 0)
+        console.warn("[paystack] payment intent was not pending during failed initialization cleanup", reservation.intent.id);
+    } catch (cleanupError) {
+      console.error("[paystack] failed to mark payment intent as failed", cleanupError);
+    }
     return Response.json({ error: "Could not start the payment. Please try again." }, { status: 502 });
   }
 }

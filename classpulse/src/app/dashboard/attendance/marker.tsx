@@ -8,6 +8,7 @@ export default function AttendanceMarker({ classes, today }: { classes: { id: st
   const [date, setDate] = useState(today);
   const [rows, setRows] = useState<Row[]>([]);
   const [msg, setMsg] = useState("");
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!classId) return;
@@ -21,12 +22,20 @@ export default function AttendanceMarker({ classes, today }: { classes: { id: st
     setRows((rs) => rs.map((r) => (r.studentId === id ? { ...r, status } : r)));
 
   async function save() {
-    const res = await fetch("/api/attendance", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ classId, date, rows: rows.map(({ studentId, status }) => ({ studentId, status })) }),
-    });
-    setMsg(res.ok ? "Attendance saved." : "Could not save attendance.");
+    setSaving(true);
+    setMsg("");
+    try {
+      const res = await fetch("/api/attendance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ classId, date, rows: rows.map(({ studentId, status }) => ({ studentId, status })) }),
+      });
+      setMsg(res.ok ? "Attendance saved." : "Could not save attendance.");
+    } catch {
+      setMsg("Could not save attendance. Check your connection and try again.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -63,8 +72,10 @@ export default function AttendanceMarker({ classes, today }: { classes: { id: st
         {rows.length === 0 && <p className="p-4 text-sm text-slate-500">No students in this class.</p>}
       </div>
       <div className="flex items-center gap-3">
-        <button className="btn" onClick={save} disabled={!rows.length}>Save attendance</button>
-        {msg && <span className="text-sm text-slate-600">{msg}</span>}
+        <button className="btn" onClick={save} disabled={!rows.length || saving}>
+          {saving ? "Saving…" : "Save attendance"}
+        </button>
+        {msg && <span role="status" className="text-sm text-slate-600">{msg}</span>}
       </div>
     </div>
   );

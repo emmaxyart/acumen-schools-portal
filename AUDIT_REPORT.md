@@ -80,12 +80,12 @@ README (12KB) covers features, setup, demo logins, Paystack wiring — good. Mis
 
 ### 2.11 Minor correctness / robustness notes
 
-- `src/app/dashboard/attendance/marker.tsx:23-30` — `save()` doesn't disable the button or show success; double-click double-submits (server upsert is idempotent — safe but poor UX).
-- `src/app/dashboard/setup/teacher-assignments.tsx:28-44` — DELETE path lacks the `window.confirm` guard that `row-actions.tsx:67` has.
-- `src/app/api/paystack/initialize/route.ts:94` — if `initializeTransaction` succeeds but a later error occurs, the intent is marked FAILED via `update` which can throw `P2025` if the intent row is missing — wrapped poorly; low impact.
-- `src/app/api/manage/[entity]/[id]/route.ts:290` — deleting a Parent unlinks children (`SetNull` on `Student.parentId`), comment says "children are kept and become unlinked" — the schema (`prisma/schema.prisma:148-149`) uses default relation behavior for optional FK; verify on production DB.
-- `src/lib/token.ts:18` — dev fallback secret `dev-only-secret-change-me` exists when `AUTH_SECRET` unset; production throws (lines 12-16). OK, but a warning log in dev would help.
-- `Student.gender` is a free `String` (schema line 142) while elsewhere enums are used — minor schema hardening.
+- `src/app/dashboard/attendance/marker.tsx` — save now disables repeat submissions, reports success/failure, and restores the button after network errors.
+- `src/app/dashboard/setup/teacher-assignments.tsx` — both subject and class assignment removals now require confirmation; request failures are shown and the busy state is always cleared.
+- `src/app/api/paystack/initialize/route.ts` — failed-initialization cleanup uses a conditional `updateMany`, avoiding `P2025` and preserving already-settled intents; cleanup failures are logged.
+- `src/app/api/manage/[entity]/[id]/route.ts` and `prisma/schema.prisma` — parent deletion preserves students and clears their parent link. `onDelete: SetNull` is now explicit, and the initial migration also specifies `ON DELETE SET NULL`; the live production database was not available to inspect.
+- `src/lib/token.ts` — the development fallback remains, but a missing `AUTH_SECRET` now emits a one-time development warning; production still throws.
+- `Student.gender` — constrained to `M`/`F` with a Prisma enum; a migration converts the existing text column. Current API and seed write paths use only those values.
 
 ---
 
